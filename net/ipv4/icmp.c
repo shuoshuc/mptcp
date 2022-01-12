@@ -1104,8 +1104,8 @@ static bool icmp_active_tdn_id(struct sk_buff *skb)
 					 tdn_id, sk);
 			} else {
 				WRITE_ONCE(tp->curr_tdn, tdn_id);
-				pr_warn("icmp_active_tdn_id(): set tdn_id=%u "
-					"on sk=%p.", tdn_id, sk);
+				pr_debug("icmp_active_tdn_id(): set tdn_id=%u "
+					 "on sk=%p.", tdn_id, sk);
 			}
 		}
 	}

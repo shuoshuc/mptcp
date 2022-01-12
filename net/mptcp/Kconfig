@@ -102,6 +102,13 @@ config MPTCP_ROUNDROBIN
 	  This is a very simple round-robin scheduler. Probably has bad performance
 	  but might be interesting for researchers.
 
+config MPTCP_TDM
+	tristate "MPTCP Time-Division Multiplex"
+	depends on (MPTCP=y)
+	---help---
+	  This is a time-division multiplex scheduler. It only sends packets to
+	  the subflow whose path index matches the active network path id.
+
 config MPTCP_REDUNDANT
 	tristate "MPTCP Redundant"
 	depends on (MPTCP=y)
@@ -124,8 +131,14 @@ choice
 	config DEFAULT_ROUNDROBIN
 		bool "Round-Robin" if MPTCP_ROUNDROBIN=y
 		---help---
-		  This is the round-rob scheduler, sending in a round-robin
+		  This is the round-robin scheduler, sending in a round-robin
 		  fashion..
+
+	config DEFAULT_TDM
+		bool "Time-Division Multiplex" if MPTCP_TDM=y
+		---help---
+		  This is the TDM scheduler, sending in a time-division
+		  multiplex fashion.
 
 	config DEFAULT_REDUNDANT
 		bool "Redundant" if MPTCP_REDUNDANT=y
@@ -141,6 +154,7 @@ config DEFAULT_MPTCP_SCHED
 	depends on (MPTCP=y)
 	default "default" if DEFAULT_SCHEDULER
 	default "roundrobin" if DEFAULT_ROUNDROBIN
+	default "tdm" if DEFAULT_TDM
 	default "redundant" if DEFAULT_REDUNDANT
 	default "default"
 
