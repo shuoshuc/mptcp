@@ -20,13 +20,21 @@ static struct tdmsched_priv *tdmsched_get_priv(const struct tcp_sock *tp)
 	return (struct tdmsched_priv *)&tp->mptcp->mptcp_sched[0];
 }
 
-/* If the sub-socket sk available to send the skb? */
-static bool mptcp_tdm_is_available(const struct sock *sk,
+/* Is the sub-socket sk available to send the skb? */
+static bool mptcp_tdm_is_available(const struct sock *meta_sk,
+				   const struct sock *sk,
 				   const struct sk_buff *skb,
 				   bool zero_wnd_test, bool cwnd_test)
 {
+	const struct tcp_sock *meta_tp = tcp_sk(meta_sk);
 	const struct tcp_sock *tp = tcp_sk(sk);
 	unsigned int space, in_flight;
+
+	if (meta_tp->curr_tdn != tp->mptcp->path_index) {
+		pr_warn("mptcp_tdm_is_available(): sk=%p path_index=%u does not match meta_sk=%p TDN=%u.",
+			sk, tp->mptcp->path_index, meta_sk, meta_tp->curr_tdn);
+		return false;
+	}
 
 	/* Set of states for which we are allowed to send data */
 	if (!mptcp_sk_can_send(sk))
@@ -113,7 +121,8 @@ static struct sock *tdm_get_available_subflow(struct sock *meta_sk,
 		mptcp_for_each_sub(mpcb, mptcp) {
 			sk = mptcp_to_sock(mptcp);
 			if (tcp_sk(sk)->mptcp->path_index == mpcb->dfin_path_index &&
-			    mptcp_tdm_is_available(sk, skb, zero_wnd_test, true))
+			    mptcp_tdm_is_available(meta_sk, sk, skb,
+						   zero_wnd_test, true))
 				return sk;
 		}
 	}
@@ -125,7 +134,8 @@ static struct sock *tdm_get_available_subflow(struct sock *meta_sk,
 		sk = mptcp_to_sock(mptcp);
 		tp = tcp_sk(sk);
 
-		if (!mptcp_tdm_is_available(sk, skb, zero_wnd_test, true))
+		if (!mptcp_tdm_is_available(meta_sk, sk, skb, zero_wnd_test,
+					    true))
 			continue;
 
 		if (mptcp_tdm_dont_reinject_skb(tp, skb)) {
@@ -212,7 +222,8 @@ retry:
 		struct tcp_sock *tp_it = tcp_sk(sk_it);
 		struct tdmsched_priv *tdm_p = tdmsched_get_priv(tp_it);
 
-		if (!mptcp_tdm_is_available(sk_it, skb, false, cwnd_limited))
+		if (!mptcp_tdm_is_available(meta_sk, sk_it, skb, false,
+					    cwnd_limited))
 			continue;
 
 		iter++;
@@ -247,7 +258,8 @@ retry:
 			struct tcp_sock *tp_it = tcp_sk(sk_it);
 			struct tdmsched_priv *tdm_p = tdmsched_get_priv(tp_it);
 
-			if (!mptcp_tdm_is_available(sk_it, skb, false, cwnd_limited))
+			if (!mptcp_tdm_is_available(meta_sk, sk_it, skb, false,
+						    cwnd_limited))
 				continue;
 
 			tdm_p->quota = 0;
@@ -262,7 +274,8 @@ found:
 		struct tcp_sock *choose_tp = tcp_sk(choose_sk);
 		struct tdmsched_priv *tdm_p = tdmsched_get_priv(choose_tp);
 
-		if (!mptcp_tdm_is_available(choose_sk, skb, false, true))
+		if (!mptcp_tdm_is_available(meta_sk, choose_sk, skb, false,
+					    true))
 			return NULL;
 
 		*subsk = choose_sk;
