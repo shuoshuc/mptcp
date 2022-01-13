@@ -3,8 +3,8 @@
 #include <linux/module.h>
 #include <net/mptcp.h>
 
-static unsigned char num_segments __read_mostly = 1;
-module_param(num_segments, byte, 0644);
+static int num_segments __read_mostly = 255;
+module_param(num_segments, int, 0644);
 MODULE_PARM_DESC(num_segments, "The number of consecutive segments that are part of a burst");
 
 static bool cwnd_limited __read_mostly = 1;
@@ -12,7 +12,7 @@ module_param(cwnd_limited, bool, 0644);
 MODULE_PARM_DESC(cwnd_limited, "if set to 1, the scheduler tries to fill the congestion-window on all subflows");
 
 struct tdmsched_priv {
-	unsigned char quota;
+	int quota;
 };
 
 static struct tdmsched_priv *tdmsched_get_priv(const struct tcp_sock *tp)
@@ -30,9 +30,10 @@ static bool mptcp_tdm_is_available(const struct sock *meta_sk,
 	const struct tcp_sock *tp = tcp_sk(sk);
 	unsigned int space, in_flight;
 
-	if (meta_tp->curr_tdn != tp->mptcp->path_index) {
-		pr_warn("mptcp_tdm_is_available(): sk=%p path_index=%u does not match meta_sk=%p TDN=%u.",
-			sk, tp->mptcp->path_index, meta_sk, meta_tp->curr_tdn);
+	if (tp->curr_tdn != tp->mptcp->path_index - 1) {
+		pr_warn("mptcp_tdm_is_available(): sk=%p path_index=%u does "
+			"not match TDN=%u.",
+			sk, tp->mptcp->path_index, meta_tp->curr_tdn);
 		return false;
 	}
 
@@ -197,7 +198,7 @@ static struct sk_buff *mptcp_tdm_next_segment(struct sock *meta_sk,
 	struct sock *choose_sk = NULL;
 	struct mptcp_tcp_sock *mptcp;
 	struct sk_buff *skb = __mptcp_tdm_next_segment(meta_sk, reinject);
-	unsigned char split = num_segments;
+	int split = num_segments;
 	unsigned char iter = 0, full_subs = 0;
 
 	/* As we set it, we have to reset it as well. */
