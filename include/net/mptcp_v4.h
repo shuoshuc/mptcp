@@ -60,7 +60,15 @@ static inline int mptcp_init4_subsockets(struct sock *meta_sk,
 					 const struct mptcp_loc4 *loc,
 					 struct mptcp_rem4 *rem)
 {
-	return __mptcp_init4_subsockets(meta_sk, loc, 0, rem, NULL);
+	__be16 sport = 0;
+	/* Experimental: always sets source port to 65000. This simplifies
+	 * parsing MPTCP traces. But note that there must be no more than 2
+	 * subflows in an MPTCP connection otherwise the port will conflict.
+	 */
+	if (IS_ENABLED(CONFIG_MPTCP_FIXED_SPORT)) {
+		sport = htons(65000);
+	}
+	return __mptcp_init4_subsockets(meta_sk, loc, sport, rem, NULL);
 }
 
 #else

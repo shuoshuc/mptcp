@@ -158,3 +158,10 @@ config DEFAULT_MPTCP_SCHED
 	default "redundant" if DEFAULT_REDUNDANT
 	default "default"
 
+config MPTCP_FIXED_SPORT
+        bool "Fixed MPTCP sport"
+	depends on (MPTCP=y)
+	default y
+        ---help---
+          Uses a fixed source port 65000 for newly added MPTCP subflows.
+	  Experimental feature, must have no more than 2 subflows.
